@@ -83,8 +83,16 @@ function Show-CdevHelp {
 
 Assert-CdevCommand -Name 'pwsh'
 $cliRepoRoot = Get-CdevRepoRoot -ScriptPath $PSCommandPath
-$resolvedSurfaceRoot = Resolve-CdevSurfaceRoot -SurfaceRoot $SurfaceRoot
 $argsMap = Convert-CdevArgsToMap -Args $CommandArgs
+$script:resolvedSurfaceRoot = $null
+
+function Get-CdevResolvedSurfaceRoot {
+    if ([string]::IsNullOrWhiteSpace([string]$script:resolvedSurfaceRoot)) {
+        $script:resolvedSurfaceRoot = Resolve-CdevSurfaceRoot -SurfaceRoot $SurfaceRoot
+    }
+
+    return [string]$script:resolvedSurfaceRoot
+}
 
 $group = if ($CommandArgs.Count -ge 1) { [string]$CommandArgs[0].ToLowerInvariant() } else { 'help' }
 $command = if ($CommandArgs.Count -ge 2) { [string]$CommandArgs[1].ToLowerInvariant() } else { '' }
@@ -104,11 +112,11 @@ try {
             switch ($command) {
                 'list' {
                     $manifestPath = if ($argsMap.ContainsKey('manifest-path')) { [string]$argsMap['manifest-path'] } else { '' }
-                    $result = Invoke-CdevReposList -SurfaceRoot $resolvedSurfaceRoot -ManifestPath $manifestPath
+                    $result = Invoke-CdevReposList -SurfaceRoot (Get-CdevResolvedSurfaceRoot) -ManifestPath $manifestPath
                 }
                 'doctor' {
                     $workspaceRoot = if ($argsMap.ContainsKey('workspace-root')) { [string]$argsMap['workspace-root'] } else { 'C:\dev' }
-                    $result = Invoke-CdevReposDoctor -SurfaceRoot $resolvedSurfaceRoot -WorkspaceRoot $workspaceRoot
+                    $result = Invoke-CdevReposDoctor -SurfaceRoot (Get-CdevResolvedSurfaceRoot) -WorkspaceRoot $workspaceRoot
                 }
                 default {
                     throw "Unsupported repos command '$command'. Use 'repos list' or 'repos doctor'."
@@ -119,7 +127,7 @@ try {
             switch ($command) {
                 'sync' {
                     $ref = if ($argsMap.ContainsKey('ref')) { [string]$argsMap['ref'] } else { 'origin/main' }
-                    $result = Invoke-CdevSurfaceSync -SurfaceRoot $resolvedSurfaceRoot -Ref $ref
+                    $result = Invoke-CdevSurfaceSync -SurfaceRoot (Get-CdevResolvedSurfaceRoot) -Ref $ref
                 }
                 default {
                     throw "Unsupported surface command '$command'. Use 'surface sync'."
@@ -130,10 +138,10 @@ try {
             switch ($command) {
                 'build' {
                     $outputRoot = if ($argsMap.ContainsKey('output-root')) { [string]$argsMap['output-root'] } else { '' }
-                    $result = Invoke-CdevInstallerBuild -SurfaceRoot $resolvedSurfaceRoot -OutputRoot $outputRoot
+                    $result = Invoke-CdevInstallerBuild -SurfaceRoot (Get-CdevResolvedSurfaceRoot) -OutputRoot $outputRoot
                 }
                 'exercise' {
-                    $result = Invoke-CdevInstallerExercise -SurfaceRoot $resolvedSurfaceRoot -PassThroughArgs $passThroughArgs
+                    $result = Invoke-CdevInstallerExercise -SurfaceRoot (Get-CdevResolvedSurfaceRoot) -PassThroughArgs $passThroughArgs
                 }
                 'install' {
                     if (-not $argsMap.ContainsKey('installer-path')) {
@@ -161,7 +169,7 @@ try {
         'linux' {
             switch ($command) {
                 'install' {
-                    $result = Invoke-CdevLinuxInstall -CliRepoRoot $cliRepoRoot -SurfaceRoot $resolvedSurfaceRoot -PassThroughArgs $passThroughArgs
+                    $result = Invoke-CdevLinuxInstall -CliRepoRoot $cliRepoRoot -SurfaceRoot (Get-CdevResolvedSurfaceRoot) -PassThroughArgs $passThroughArgs
                 }
                 'deploy-ni' {
                     $result = Invoke-CdevLinuxDeployNi -CliRepoRoot $cliRepoRoot -PassThroughArgs $passThroughArgs

@@ -49,6 +49,25 @@ Describe 'cdev CLI command contract' {
         $script:readme | Should -Match ([regex]::Escape('linux deploy-ni'))
     }
 
+    It 'runs help command without requiring a surface root path' {
+        $reportPath = Join-Path $env:TEMP ("cdev-cli-help-" + [Guid]::NewGuid().ToString('N') + '.json')
+        $previousSurfaceRoot = $env:CDEV_SURFACE_ROOT
+
+        try {
+            Remove-Item Env:CDEV_SURFACE_ROOT -ErrorAction SilentlyContinue
+            & pwsh -NoProfile -File $script:entrypoint -ReportPath $reportPath help
+            $LASTEXITCODE | Should -Be 0
+            (Test-Path -LiteralPath $reportPath -PathType Leaf) | Should -BeTrue
+        } finally {
+            if ($null -eq $previousSurfaceRoot) {
+                Remove-Item Env:CDEV_SURFACE_ROOT -ErrorAction SilentlyContinue
+            } else {
+                $env:CDEV_SURFACE_ROOT = $previousSurfaceRoot
+            }
+            Remove-Item -LiteralPath $reportPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'has parse-safe PowerShell syntax' {
         $tokens = $null
         $errors = $null
