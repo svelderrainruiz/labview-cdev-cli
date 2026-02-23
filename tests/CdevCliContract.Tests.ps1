@@ -49,6 +49,47 @@ Describe 'cdev CLI command contract' {
         $script:readme | Should -Match ([regex]::Escape('linux deploy-ni'))
     }
 
+    It 'runs help command without requiring a surface root path' {
+        $tempRoot = if ([string]::IsNullOrWhiteSpace($env:TEMP)) { [System.IO.Path]::GetTempPath() } else { $env:TEMP }
+        $reportPath = Join-Path $tempRoot ("cdev-cli-help-" + [Guid]::NewGuid().ToString('N') + '.json')
+        $previousSurfaceRoot = $env:CDEV_SURFACE_ROOT
+
+        try {
+            Remove-Item Env:CDEV_SURFACE_ROOT -ErrorAction SilentlyContinue
+            & pwsh -NoProfile -File $script:entrypoint -ReportPath $reportPath help
+            $LASTEXITCODE | Should -Be 0
+            (Test-Path -LiteralPath $reportPath -PathType Leaf) | Should -BeTrue
+        } finally {
+            if ($null -eq $previousSurfaceRoot) {
+                Remove-Item Env:CDEV_SURFACE_ROOT -ErrorAction SilentlyContinue
+            } else {
+                $env:CDEV_SURFACE_ROOT = $previousSurfaceRoot
+            }
+            Remove-Item -LiteralPath $reportPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'honors --output-root for release package command' {
+        $tempRoot = if ([string]::IsNullOrWhiteSpace($env:TEMP)) { [System.IO.Path]::GetTempPath() } else { $env:TEMP }
+        $outputRoot = Join-Path $tempRoot ("cdev-cli-release-" + [Guid]::NewGuid().ToString('N'))
+        $reportPath = Join-Path $tempRoot ("cdev-cli-release-report-" + [Guid]::NewGuid().ToString('N') + '.json')
+        $resolvedOutputRoot = [System.IO.Path]::GetFullPath($outputRoot)
+
+        try {
+            & pwsh -NoProfile -File $script:entrypoint -ReportPath $reportPath release package --output-root $outputRoot
+            $LASTEXITCODE | Should -Be 0
+
+            $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json -ErrorAction Stop
+            [string]$report.status | Should -Be 'succeeded'
+            [string]$report.data.output_root | Should -Be $resolvedOutputRoot
+            (Test-Path -LiteralPath (Join-Path $resolvedOutputRoot 'cdev-cli-win-x64.zip') -PathType Leaf) | Should -BeTrue
+            (Test-Path -LiteralPath (Join-Path $resolvedOutputRoot 'cdev-cli-linux-x64.tar.gz') -PathType Leaf) | Should -BeTrue
+        } finally {
+            Remove-Item -LiteralPath $outputRoot -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $reportPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'has parse-safe PowerShell syntax' {
         $tokens = $null
         $errors = $null
