@@ -97,10 +97,33 @@ function Invoke-CdevPostactionsCollect {
         @($report.post_action_sequence) | Select-Object index,phase,bitness,status,message | Format-Table -AutoSize | Out-Host
     }
 
+    $processCleanup = $null
+    if ($null -ne $report.labview_process_cleanup -or $null -ne $report.vipm_process_cleanup -or $null -ne $report.diagnostics.process_cleanup) {
+        $processCleanup = [ordered]@{
+            labview = $report.labview_process_cleanup
+            vipm = $report.vipm_process_cleanup
+            diagnostics = $report.diagnostics.process_cleanup
+        }
+
+        if ($null -ne $processCleanup.labview) {
+            Write-Host ("LabVIEW cleanup: attempted={0} terminated={1} failed={2}" -f `
+                $processCleanup.labview.attempted, `
+                $processCleanup.labview.terminated.Count, `
+                $processCleanup.labview.failed.Count)
+        }
+        if ($null -ne $processCleanup.vipm) {
+            Write-Host ("VIPM cleanup: attempted={0} terminated={1} failed={2}" -f `
+                $processCleanup.vipm.attempted, `
+                $processCleanup.vipm.terminated.Count, `
+                $processCleanup.vipm.failed.Count)
+        }
+    }
+
     $status = if ($errors.Count -eq 0) { 'succeeded' } else { 'failed' }
     return (New-CdevResult -Status $status -Reports @($resolvedReport) -Errors $errors -Data ([ordered]@{
         ppl_32 = $ppl32
         ppl_64 = $ppl64
         vip = $vip
+        process_cleanup = $processCleanup
     }))
 }
