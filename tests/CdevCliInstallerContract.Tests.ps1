@@ -22,6 +22,12 @@ Describe 'cdev CLI installer command contract' {
         $script:installerCommands | Should -Match 'vip_package_build_check.status'
     }
 
+    It 'surfaces installer process cleanup signal when present' {
+        $script:installerCommands | Should -Match 'labview_process_cleanup'
+        $script:installerCommands | Should -Match 'vipm_process_cleanup'
+        $script:installerCommands | Should -Match 'process_cleanup'
+    }
+
     It 'has parse-safe PowerShell syntax' {
         $tokens = $null
         $errors = $null
